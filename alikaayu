@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="id" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Undangan Digital</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Poppins', sans-serif; }
+    html, body { height: 100%; }
+    .toast { animation: slideUp 0.3s ease, fadeOut 0.3s ease 2s forwards; }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes fadeOut { to { opacity: 0; } }
+  </style>
+  <style>body { box-sizing: border-box; }</style>
+ </head>
+ <body class="h-full">
+  <div id="app" class="h-full w-full overflow-auto flex flex-col">
+   <header class="text-white px-6 py-12 text-center shadow-lg">
+    <h1 id="header-title" class="font-bold tracking-tight mb-2">Undangan Digital</h1>
+    <p id="header-subtitle" class="text-lg opacity-90">Selamat datang! Mohon konfirmasi kehadiran Anda.</p>
+   </header>
+   <main class="flex-1 flex flex-col items-center justify-center px-6 py-12">
+    <div class="w-full max-w-md">
+     <h2 id="form-title" class="text-2xl font-bold text-center mb-8">Form Konfirmasi Kehadiran</h2>
+     <form id="rsvpForm" class="flex flex-col gap-4">
+      <div>
+       <label for="nama-input" class="block text-sm font-semibold mb-2">Nama Anda</label> <input type="text" id="nama-input" placeholder="Masukkan nama Anda" required class="w-full px-4 py-2 border-2 rounded-lg font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-offset-2">
+      </div>
+      <div>
+       <label for="kehadiran-select" class="block text-sm font-semibold mb-2">Apakah Anda hadir?</label> <select id="kehadiran-select" required class="w-full px-4 py-2 border-2 rounded-lg font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-offset-2"> <option value="">-- Pilih Jawaban --</option> <option value="Hadir">✓ Hadir</option> <option value="Tidak Hadir">✗ Tidak Hadir</option> </select>
+      </div><button type="submit" id="submit-btn" class="text-white font-bold py-3 rounded-lg shadow-lg transition-all active:scale-95 hover:shadow-xl mt-4">Kirim Konfirmasi</button>
+     </form>
+     <div id="success-message" class="hidden mt-6 p-4 bg-green-100 border-l-4 border-green-500 text-green-700 rounded text-center">
+      <p class="font-semibold">✓ Terima kasih telah mengkonfirmasi kehadiran!</p>
+     </div>
+    </div>
+   </main>
+   <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 pointer-events-none"></div>
+  </div>
+  <script>
+    const defaultConfig = {
+      header_title: "Undangan Digital",
+      header_subtitle: "Selamat datang! Mohon konfirmasi kehadiran Anda.",
+      form_title: "Form Konfirmasi Kehadiran",
+      button_text: "Kirim Konfirmasi",
+      background_color: "#f0fdf4",
+      primary_color: "#16a34a",
+      text_color: "#15803d",
+      font_family: "Poppins",
+      font_size: 16
+    };
+
+    let currentRecordCount = 0;
+
+    const dataHandler = {
+      onDataChanged(data) {
+        currentRecordCount = data.length;
+      }
+    };
+
+    async function initDataSdk() {
+      const result = await window.dataSdk.init(dataHandler);
+      if (!result.isOk) {
+        console.error('Failed to initialize Data SDK');
+      }
+    }
+
+    function applyConfig(config) {
+      const c = { ...defaultConfig, ...config };
+      document.getElementById('header-title').textContent = c.header_title;
+      document.getElementById('header-subtitle').textContent = c.header_subtitle;
+      document.getElementById('form-title').textContent = c.form_title;
+      document.getElementById('submit-btn').textContent = c.button_text;
+
+      const app = document.getElementById('app');
+      app.style.backgroundColor = c.background_color;
+      document.querySelector('header').style.backgroundColor = c.primary_color;
+      document.getElementById('submit-btn').style.backgroundColor = c.primary_color;
+      
+      const inputs = document.querySelectorAll('input, select');
+      inputs.forEach(input => {
+        input.style.borderColor = c.primary_color;
+      });
+
+      const font = c.font_family + ', sans-serif';
+      document.body.style.fontFamily = font;
+
+      const base = c.font_size;
+      document.getElementById('header-title').style.fontSize = `${base * 1.875}px`;
+      document.getElementById('form-title').style.fontSize = `${base * 1.5}px`;
+    }
+
+    document.getElementById('rsvpForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const nama = document.getElementById('nama-input').value.trim();
+      const kehadiran = document.getElementById('kehadiran-select').value;
+
+      if (!nama || !kehadiran) {
+        showToast('Silakan isi semua data terlebih dahulu.');
+        return;
+      }
+
+      if (currentRecordCount >= 999) {
+        showToast('Batas data telah tercapai. Hubungi penyelenggara.');
+        return;
+      }
+
+      const submitBtn = document.getElementById('submit-btn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Mengirim...';
+
+      const result = await window.dataSdk.create({
+        nama: nama,
+        kehadiran: kehadiran,
+        timestamp: new Date().toISOString()
+      });
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = defaultConfig.button_text;
+
+      if (result.isOk) {
+        showToast(`✓ Terima kasih ${nama}! Konfirmasi diterima.`);
+        document.getElementById('rsvpForm').reset();
+        document.getElementById('success-message').classList.remove('hidden');
+        setTimeout(() => {
+          document.getElementById('success-message').classList.add('hidden');
+        }, 3000);
+      } else {
+        showToast('Gagal mengirim data. Coba lagi.');
+      }
+    });
+
+    function showToast(message) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'toast text-white px-6 py-3 rounded-lg shadow-xl text-sm font-semibold bg-blue-600';
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 2500);
+    }
+
+    window.elementSdk.init({
+      defaultConfig,
+      onConfigChange: async (config) => applyConfig(config),
+      mapToCapabilities: (config) => ({
+        recolorables: [
+          { get: () => config.background_color || defaultConfig.background_color, set: (v) => { config.background_color = v; window.elementSdk.setConfig({ background_color: v }); } },
+          { get: () => config.primary_color || defaultConfig.primary_color, set: (v) => { config.primary_color = v; window.elementSdk.setConfig({ primary_color: v }); } },
+          { get: () => config.text_color || defaultConfig.text_color, set: (v) => { config.text_color = v; window.elementSdk.setConfig({ text_color: v }); } }
+        ],
+        borderables: [],
+        fontEditable: { get: () => config.font_family || defaultConfig.font_family, set: (v) => { config.font_family = v; window.elementSdk.setConfig({ font_family: v }); } },
+        fontSizeable: { get: () => config.font_size || defaultConfig.font_size, set: (v) => { config.font_size = v; window.elementSdk.setConfig({ font_size: v }); } }
+      }),
+      mapToEditPanelValues: (config) => new Map([
+        ["header_title", config.header_title || defaultConfig.header_title],
+        ["header_subtitle", config.header_subtitle || defaultConfig.header_subtitle],
+        ["form_title", config.form_title || defaultConfig.form_title],
+        ["button_text", config.button_text || defaultConfig.button_text]
+      ])
+    });
+
+    initDataSdk();
+    applyConfig(defaultConfig);
+    lucide.createIcons();
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9fe16f42d390fde7',t:'MTc3OTE3NjIyOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
